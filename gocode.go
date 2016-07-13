@@ -29,14 +29,12 @@ func init() {
 /* gcBoilerplate prints the necessary boilerplate to use the rest of the Go
 code output. */
 func gcBoilerplate() {
-	fmt.Printf("%v\n", `
-import "math/rand"
+	fmt.Printf("%v\n", `import "math/rand"
 func seedToString(seed int64, len int) string {
-	r = rand.New(rand.NewSource(i))
-	r.Seed(seed)
+	r := rand.New(rand.NewSource(seed))
 	b := make([]byte, len)
 	for i := range b {
-		b[i] = rand.Intn(256)
+		b[i] = byte(r.Intn(256))
 	}
 	return string(b)
 }`)
@@ -64,7 +62,7 @@ func gcFound(v []byte, s int64) {
 		varnames[vn] = n + 1
 	}
 	fmt.Printf("/* %q */\n", v)
-	fmt.Printf("%v = seedToString(%v, %v)\n", vn, s, len(v))
+	fmt.Printf("var %v = seedToString(%v, %v)\n", vn, s, len(v))
 }
 
 /* gcNotFond notes if a string's not been found */
