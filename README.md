@@ -1,6 +1,6 @@
 # Seed finder
 
-Go tool that finds math/rand seed number for given word which. Right now it's limited to [a-z] but can be easily modified for wider ascii range.
+Go tool that finds math/rand seed number for given word. Right now it's limited to [a-z] but can be easily modified for wider ascii range.
 
 ## Usage
 
