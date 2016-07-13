@@ -4,6 +4,7 @@ package main
  * main.go
  * Generated PRNG seeds to represent strings
  * By Henri Koski, github.com/heppu/seed-finder
+ * Modified by J. Stuart McMurray
  * Created 20160712
  * Last Modified 20160712
  */
