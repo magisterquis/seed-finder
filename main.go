@@ -11,8 +11,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"runtime"
 	"sync"
 )
@@ -26,7 +28,48 @@ const (
 var EXPECTED = flag.String("w", "", "word")
 
 func main() {
+	var (
+		dbFile = flag.String(
+			"db",
+			"/var/db/seed-finder.db",
+			"Database `file`",
+		)
+		wordFile = flag.String(
+			"f",
+			"",
+			"Name of `file` containing strings to convert, or "+
+				"\"-\" to read from stdin",
+		)
+		zero = flag.Bool(
+			"0",
+			false,
+			"Split on null bytes (\\0), not newlines",
+		)
+		goOut = flag.Bool(
+			"go",
+			false,
+			"Output Go source code",
+		)
+	)
+	flag.Usage = func() {
+		fmt.Fprintf(
+			os.Stderr,
+			`Usage: %v [options] [string [string...]]
+
+Finds a random number seed which can be used to recrate the original string,
+optionally first checking a database (which will be updated with found seeds).
+
+Options:
+`,
+			os.Args[0],
+		)
+		flag.PrintDefaults()
+	}
 	flag.Parse()
+
+	/* TODO: Update this */
+	fmt.Printf("DO SOMETHING WITH:\n*dbFile: %v\n*wordFile: %v\n*zero: %v\n*goOut: %v\n", *dbFile, *wordFile, *zero, *goOut)
+
 	if *EXPECTED == "" {
 		flag.PrintDefaults()
 		return
