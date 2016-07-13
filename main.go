@@ -13,19 +13,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math/rand"
 	"os"
 	"runtime"
-	"sync"
-)
 
-const (
-	MAX_UINT64 uint64 = ^uint64(0)
-	MAX_INT64  int64  = int64(MAX_UINT64 >> 1)
-	MIN_INT64  int64  = -MAX_INT64 - 1
+	"github.com/boltdb/bolt"
 )
-
-var EXPECTED = flag.String("w", "", "word")
 
 func main() {
 	var (
@@ -43,12 +35,17 @@ func main() {
 		zero = flag.Bool(
 			"0",
 			false,
-			"Split on null bytes (\\0), not newlines",
+			"Split on null bytes (\\0), not newlines with -f",
 		)
-		goOut = flag.Bool(
+		goCode = flag.Bool(
 			"go",
 			false,
 			"Output Go source code",
+		)
+		nParallel = flag.Uint(
+			"n",
+			uint(runtime.NumCPU()),
+			"Split seed-finding into `count` parallel attempts",
 		)
 	)
 	flag.Usage = func() {
@@ -59,68 +56,45 @@ func main() {
 Finds a random number seed which can be used to recrate the original string,
 optionally first checking a database (which will be updated with found seeds).
 
+Strings must not be longer than %v bytes.
+
 Options:
 `,
 			os.Args[0],
+			bolt.MaxKeySize,
 		)
 		flag.PrintDefaults()
 	}
 	flag.Parse()
 
-	/* TODO: Update this */
-	fmt.Printf("DO SOMETHING WITH:\n*dbFile: %v\n*wordFile: %v\n*zero: %v\n*goOut: %v\n", *dbFile, *wordFile, *zero, *goOut)
-
-	if *EXPECTED == "" {
-		flag.PrintDefaults()
-		return
+	/* Get the strings or chunks for which to find seeds */
+	ins, err := getInput(flag.Args(), *wordFile, *zero)
+	if nil != err {
+		log.Fatalf("Unable to get input: %v", err)
+	}
+	if nil == ins {
+		fmt.Fprintf(os.Stderr, "No strings to convert.\n\n")
+		flag.Usage()
+		os.Exit(1)
 	}
 
-	workers := runtime.NumCPU()
-	gap := int64(MAX_UINT64 / uint64(workers))
-	from := MIN_INT64
-
-	var to int64
-	if workers > 1 {
-		to = MIN_INT64 + int64(gap)
-	} else {
-		to = MAX_INT64
+	/* Open the database */
+	db, err := dbOpen(*dbFile)
+	if nil != err {
+		log.Fatalf("Database error with %v: %v", *dbFile, err)
+	}
+	if nil != db {
+		log.Printf("Opened database %v", *dbFile)
+		defer db.Close()
 	}
 
-	log.Printf("Starting %d workers with gap: %d", workers, gap)
-
-	wg := &sync.WaitGroup{}
-	for i := 0; i < workers; i++ {
-		wg.Add(1)
-		tmp := i
-		go find(tmp, from, to, wg)
-		from = to + 1
-		to += gap + 1
+	/* If we're printing out Go code, print the boilerplate */
+	if *goCode {
+		gcBoilerplate()
 	}
 
-	wg.Wait()
-}
-
-func find(wNum int, from, to int64, wg *sync.WaitGroup) {
-	defer wg.Done()
-	var r *rand.Rand
-	var s byte
-	var full string
-
-	log.Printf("Worker %d working from %d to %d: ", wNum, from, to)
-
-	for i := from; i <= to; i++ {
-		r = rand.New(rand.NewSource(i))
-		full = ""
-		for j := 0; j < len(*EXPECTED); j++ {
-			s = byte(r.Intn(26) + 97)
-			if s != (*EXPECTED)[j] {
-				break
-			}
-			full += string(s)
-		}
-
-		if full == *EXPECTED {
-			log.Fatalf("Result: '%s' found with seed: '%d'", *EXPECTED, i)
-		}
+	/* Find each seed */
+	for _, in := range ins {
+		findSeed(in, *nParallel, *goCode)
 	}
 }
