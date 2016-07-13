@@ -34,7 +34,7 @@ func main() {
 		to = MAX_INT64
 	}
 
-	log.Printf("Starting %d workers with gap: ", workers, gap)
+	log.Printf("Starting %d workers with gap: %d", workers, gap)
 
 	wg := &sync.WaitGroup{}
 	for i := 0; i < workers; i++ {
