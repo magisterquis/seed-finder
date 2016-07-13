@@ -1,5 +1,13 @@
 package main
 
+/*
+ * main.go
+ * Generated PRNG seeds to represent strings
+ * By heppu, github.com/heppu/seed-finder
+ * Created 20160712
+ * Last Modified 20160712
+ */
+
 import (
 	"flag"
 	"log"
