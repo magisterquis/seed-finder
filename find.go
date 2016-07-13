@@ -43,6 +43,7 @@ func findSeed(v []byte, workers uint, goCode bool) {
 			return
 		}
 		s = *p
+		storeSeed(s, v)
 	}
 	/* Write go code if asked */
 	if goCode {
@@ -102,10 +103,10 @@ func calculate(v []byte, workers uint) *int64 {
 	/* Wait four our workers to finish */
 	var seed *int64
 	for i := uint(0); i < workers; i++ {
+		s := <-ch
 		/* Get the worker's result */
-		seed := <-ch
-		/* If it's a real seed, we win! */
-		if nil != seed {
+		if nil != s {
+			seed = s
 			done = true
 		}
 	}
@@ -140,4 +141,5 @@ func find(v []byte, wNum uint, from, to int64, done *bool, ch chan<- *int64) {
 			return
 		}
 	}
+	ch <- nil
 }
