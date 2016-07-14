@@ -13,6 +13,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 )
 
 /* Set of already-used string names */
@@ -55,6 +56,7 @@ func gcVar(v []byte, sublen uint, nParallel uint) {
 	var ss []int64
 	var ls []int
 	var start, end int
+	started := time.Now()
 	for start = 0; start < len(v); start += int(sublen) {
 		/* Work out subslice to find */
 		end = start + int(sublen)
@@ -64,7 +66,7 @@ func gcVar(v []byte, sublen uint, nParallel uint) {
 		/* Get the seed for the subslice */
 		log.Printf(
 			"Working on bytes %v - %v of %q: %q",
-			start, end,
+			start, end-1,
 			v,
 			v[start:end],
 		)
@@ -76,6 +78,14 @@ func gcVar(v []byte, sublen uint, nParallel uint) {
 		ss = append(ss, s)
 		ls = append(ls, end-start)
 	}
+	/* Time the whole thing took */
+	d := time.Now().Sub(started)
+	log.Printf(
+		"Found seeds for %q in %v (%v/byte)",
+		v,
+		d,
+		d/time.Duration(len(v)),
+	)
 
 	/* Once we've got all the seeds, print a nice line of Go */
 	gcFound(v, ss, ls)
