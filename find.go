@@ -20,9 +20,12 @@ const (
 	MIN_INT64  int64  = -MAX_INT64 - 1
 )
 
+/* ErrUnfindable is returned when a seed for a string does not exist. */
+var ErrUnfindable = fmt.Errorf("no matching seed exists")
+
 /* findSeed finds the seed for v using npar guessing goroutines.  If goCode is
 true, Go source code will be emitted, which can be used in other programs */
-func findSeed(v []byte, workers uint, goCode bool) {
+func findSeed(v []byte, workers uint) (int64, error) {
 	/* Check the database */
 	s, unfindable, found, err := checkDB(v)
 	if nil != err {
@@ -31,6 +34,7 @@ func findSeed(v []byte, workers uint, goCode bool) {
 			v,
 			err,
 		)
+		return 0, err
 	}
 
 	/* If it wasn't there, but it's not known to be unfindable, find it */
@@ -39,23 +43,19 @@ func findSeed(v []byte, workers uint, goCode bool) {
 		p := calculate(v, workers)
 		/* If it's unfindable, note it and move on */
 		if nil == p {
-			logUnfindable(v, goCode)
-			return
+			logUnfindable(v)
+			return 0, ErrUnfindable
 		}
 		s = *p
 		storeSeed(s, v)
 	}
-	/* Write go code if asked */
-	if goCode {
-		log.Printf("Found seed for %q: %v", v, s)
-		gcFound(v, s)
-		return
-	}
-	fmt.Printf("%v %q\n", s, v)
+
+	return s, nil
+
 }
 
-/* unfindable makes appropriate notes and such that there is no seed for v */
-func logUnfindable(v []byte, goCode bool) {
+/* logUnfindable makes appropriate notes and such that there is no seed for v */
+func logUnfindable(v []byte) {
 	log.Printf("No seed found for %q", v)
 	if err := noteUnfindable(v); nil != err {
 		log.Printf(
@@ -63,9 +63,6 @@ func logUnfindable(v []byte, goCode bool) {
 			v,
 			err,
 		)
-	}
-	if goCode {
-		gcNotFound(v)
 	}
 }
 

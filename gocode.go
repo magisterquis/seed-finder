@@ -10,6 +10,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 )
@@ -40,18 +41,57 @@ func seedToString(seed int64, len int) string {
 }`)
 }
 
-/* gcFound emits code to be used as a string replacement */
-func gcFound(v []byte, s int64) {
+/* gcVar tries to make a variable for the input slice.  Slices longer than
+sublen bytes will be chopped into sublen-byte chunks and reassembled in the
+output code. */
+func gcVar(v []byte, sublen uint, nParallel uint) {
 	/* If we've already seen this one, don't bother */
 	if _, ok := seen[string(v)]; ok {
 		return
 	}
 	seen[string(v)] = struct{}{}
 
+	/* Split into chunks */
+	var ss []int64
+	var ls []int
+	var start, end int
+	for start = 0; start < len(v); start += int(sublen) {
+		/* Work out subslice to find */
+		end = start + int(sublen)
+		if end > len(v) {
+			end = len(v)
+		}
+		/* Get the seed for the subslice */
+		log.Printf(
+			"Working on bytes %v - %v of %q: %q",
+			start, end,
+			v,
+			v[start:end],
+		)
+		s, err := findSeed(v[start:end], nParallel)
+		if nil != err {
+			fmt.Printf("/* %q not found: %v */\n", v, err)
+		}
+		/* Save it */
+		ss = append(ss, s)
+		ls = append(ls, end-start)
+	}
+
+	/* Once we've got all the seeds, print a nice line of Go */
+	gcFound(v, ss, ls)
+}
+
+/* gcFound emits code to be used as a string replacement.  The seeds needed
+to make the substrings go in ss, and the lengths of the corresponding
+substrings in ls. */
+func gcFound(v []byte, ss []int64, ls []int) {
+
 	/* Variable name form of v */
 	vn := strconv.Quote(string(v))
 	vn = strings.Map(func(r rune) rune {
-		if (r >= '0' && r <= '9') || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
+		if (r >= '0' && r <= '9') ||
+			(r >= 'a' && r <= 'z') ||
+			(r >= 'A' && r <= 'Z') {
 			return r
 		}
 		return '_'
@@ -61,11 +101,11 @@ func gcFound(v []byte, s int64) {
 		vn = fmt.Sprintf("%v_%v", vn, n)
 		varnames[vn] = n + 1
 	}
+	/* Print go code for variable */
 	fmt.Printf("/* %q */\n", v)
-	fmt.Printf("var %v = seedToString(%v, %v)\n", vn, s, len(v))
-}
-
-/* gcNotFond notes if a string's not been found */
-func gcNotFound(v []byte) {
-	fmt.Printf("/* %q not found */\n", v)
+	fmt.Printf("var %v = \"\"", vn)
+	for i, s := range ss {
+		fmt.Printf(" + seedToString(%v, %v)", s, ls[i])
+	}
+	fmt.Printf("\n")
 }

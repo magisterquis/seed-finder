@@ -42,6 +42,12 @@ func main() {
 			false,
 			"Output Go source code",
 		)
+		goLen = flag.Uint(
+			"golen",
+			3,
+			"Split strings into chunks of this `length` if Go "+
+				"source code is to be output",
+		)
 		nParallel = flag.Uint(
 			"n",
 			uint(runtime.NumCPU()),
@@ -55,6 +61,9 @@ func main() {
 
 Finds a random number seed which can be used to recrate the original string,
 optionally first checking a database (which will be updated with found seeds).
+
+If Go source is to be output, strings will be split into smaller chunks, to
+considerably speed up searching.
 
 Strings must not be longer than %v bytes.
 
@@ -91,10 +100,19 @@ Options:
 	/* If we're printing out Go code, print the boilerplate */
 	if *goCode {
 		gcBoilerplate()
+		for _, in := range ins {
+			gcVar(in, *goLen, *nParallel)
+		}
+		return
 	}
 
 	/* Find each seed */
 	for _, in := range ins {
-		findSeed(in, *nParallel, *goCode)
+		seed, err := findSeed(in, *nParallel)
+		if nil != err {
+			log.Printf("Unable to find seed for %v: %v", in, err)
+			continue
+		}
+		fmt.Printf("%q %v", in, seed)
 	}
 }
