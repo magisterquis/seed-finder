@@ -11,39 +11,54 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"io"
+	"log"
 	"os"
 
 	"github.com/boltdb/bolt"
 )
 
-/* getInput returns the strings in args, as well as the lines or
-NULL-terminated chunks (if nt is true) from the file named fn. */
-func getInput(args []string, fn string, nt bool) ([][]byte, error) {
-
+/* getInput returns a channel from which can be read the strings in args as
+well as the lines or null-terminated chunks (if nt is true) in the file named
+fn. */
+func getInput(args []string, fn string, nt bool) (<-chan []byte, error) {
 	/* Convert args to byte slices */
 	var o [][]byte
 	for _, v := range args {
 		o = append(o, []byte(v))
 	}
-
 	/* If we have no file, we're done */
 	if "" == fn {
-		return o, nil
+		return nil, nil
 	}
-
 	/* File to read from */
-	var r io.Reader
+	var r *os.File
+	var err error
 	if "-" == fn {
 		r = os.Stdin
 	} else {
 		/* Try to open the file */
-		f, err := os.Open(fn)
+		r, err = os.Open(fn)
 		if nil != err {
 			return nil, err
 		}
-		defer f.Close()
-		r = f
+	}
+	/* Channel to send strings on */
+	ch := make(chan []byte)
+	/* Read into the channel */
+	go inputToChannel(o, r, nt, ch)
+	return ch, err
+
+}
+
+/* inputToChannel puts the slices from args on a channel, as well as the
+lines or chunks from r */
+func inputToChannel(args [][]byte, r *os.File, nt bool, ch chan<- []byte) {
+	defer r.Close()
+	defer close(ch)
+
+	/* Send args on the channel */
+	for _, a := range args {
+		ch <- a
 	}
 
 	/* Read lines or chunks from the file */
@@ -59,10 +74,11 @@ func getInput(args []string, fn string, nt bool) ([][]byte, error) {
 
 	/* Read chunks */
 	for scanner.Scan() {
-		o = append(o, scanner.Bytes())
+		ch <- scanner.Bytes()
 	}
-
-	return o, scanner.Err()
+	if err := scanner.Err(); nil != err {
+		log.Printf("Unable to read input: %v", err)
+	}
 }
 
 /* The following function taken from

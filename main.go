@@ -100,14 +100,14 @@ Options:
 	/* If we're printing out Go code, print the boilerplate */
 	if *goCode {
 		gcBoilerplate()
-		for _, in := range ins {
+		for in := range ins {
 			gcVar(in, *goLen, *nParallel)
 		}
 		return
 	}
 
 	/* Find each seed */
-	for _, in := range ins {
+	for in := range ins {
 		seed, err := findSeed(in, *nParallel)
 		if nil != err {
 			log.Printf("Unable to find seed for %v: %v", in, err)
