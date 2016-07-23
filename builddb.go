@@ -37,10 +37,6 @@ SEEDS:
 				continue SEEDS
 			}
 		}
-		if "irc" == string(b) {
-			log.Printf("Done: %v", seed)
-			return
-		}
 		if err = storeSeed(seed, b); nil != err {
 			log.Fatalf("Unable to store %q->%v: %v", b, seed, err)
 		}
