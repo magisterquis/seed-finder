@@ -58,6 +58,11 @@ func main() {
 			"",
 			"Write output to this file instead of stdout",
 		)
+		pkgName = flag.String(
+			"p",
+			"main",
+			"Package name to use when outputting Go source",
+		)
 	)
 	flag.Usage = func() {
 		fmt.Fprintf(
@@ -121,7 +126,7 @@ Options:
 
 	/* If we're printing out Go code, print the boilerplate */
 	if *goCode {
-		gcBoilerplate(ofile)
+		gcBoilerplate(ofile, *pkgName)
 		for in := range ins {
 			gcVar(in, *goLen, *nParallel, ofile)
 		}

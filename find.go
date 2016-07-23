@@ -117,7 +117,7 @@ func find(v []byte, wNum uint, from, to int64, done *bool, ch chan<- *int64) {
 	var r *rand.Rand
 	var s byte
 
-	log.Printf("Worker %d working from %d to %d: ", wNum, from, to)
+	// log.Printf("Worker %d working from %d to %d: ", wNum, from, to) /* DEBUG */
 
 	/* Search through each seed */
 	for i := from; !*done && i <= to; i++ {
