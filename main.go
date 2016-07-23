@@ -53,6 +53,11 @@ func main() {
 			uint(runtime.NumCPU()),
 			"Split seed-finding into `count` parallel attempts",
 		)
+		oFileName = flag.String(
+			"o",
+			"",
+			"Write output to this file instead of stdout",
+		)
 	)
 	flag.Usage = func() {
 		fmt.Fprintf(
@@ -97,11 +102,28 @@ Options:
 		defer db.Close()
 	}
 
+	/* Open the output file */
+	ofile := os.Stdout
+	if "" != *oFileName {
+		ofile, err = os.OpenFile(
+			*oFileName,
+			os.O_CREATE|os.O_APPEND|os.O_WRONLY,
+			0644,
+		)
+		if nil != err {
+			log.Fatalf(
+				"Unable to open output file %v: %v",
+				*oFileName,
+				err,
+			)
+		}
+	}
+
 	/* If we're printing out Go code, print the boilerplate */
 	if *goCode {
-		gcBoilerplate()
+		gcBoilerplate(ofile)
 		for in := range ins {
-			gcVar(in, *goLen, *nParallel)
+			gcVar(in, *goLen, *nParallel, ofile)
 		}
 		return
 	}
@@ -113,6 +135,6 @@ Options:
 			log.Printf("Unable to find seed for %v: %v", in, err)
 			continue
 		}
-		fmt.Printf("%q %v", in, seed)
+		fmt.Fprintf(ofile, "%q %v", in, seed)
 	}
 }

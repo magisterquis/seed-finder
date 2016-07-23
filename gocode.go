@@ -11,6 +11,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -30,8 +31,8 @@ func init() {
 
 /* gcBoilerplate prints the necessary boilerplate to use the rest of the Go
 code output. */
-func gcBoilerplate() {
-	fmt.Printf("%v\n", `import "math/rand"
+func gcBoilerplate(o *os.File) {
+	fmt.Fprintf(o, "%v\n", `import "math/rand"
 func seedToString(seed int64, len int) string {
 	r := rand.New(rand.NewSource(seed))
 	b := make([]byte, len)
@@ -44,8 +45,8 @@ func seedToString(seed int64, len int) string {
 
 /* gcVar tries to make a variable for the input slice.  Slices longer than
 sublen bytes will be chopped into sublen-byte chunks and reassembled in the
-output code. */
-func gcVar(v []byte, sublen uint, nParallel uint) {
+output code.  Output will be written to o. */
+func gcVar(v []byte, sublen uint, nParallel uint, o *os.File) {
 	/* If we've already seen this one, don't bother */
 	if _, ok := seen[string(v)]; ok {
 		return
@@ -72,7 +73,7 @@ func gcVar(v []byte, sublen uint, nParallel uint) {
 		)
 		s, err := findSeed(v[start:end], nParallel)
 		if nil != err {
-			fmt.Printf("/* %q not found: %v */\n", v, err)
+			fmt.Fprintf(o, "/* %q not found: %v */\n", v, err)
 		}
 		/* Save it */
 		ss = append(ss, s)
@@ -88,14 +89,13 @@ func gcVar(v []byte, sublen uint, nParallel uint) {
 	)
 
 	/* Once we've got all the seeds, print a nice line of Go */
-	gcFound(v, ss, ls)
+	gcFound(v, ss, ls, o)
 }
 
 /* gcFound emits code to be used as a string replacement.  The seeds needed
 to make the substrings go in ss, and the lengths of the corresponding
-substrings in ls. */
-func gcFound(v []byte, ss []int64, ls []int) {
-
+substrings in ls.  Output will be written to o. */
+func gcFound(v []byte, ss []int64, ls []int, o *os.File) {
 	/* Variable name form of v */
 	vn := strconv.Quote(string(v))
 	vn = strings.Map(func(r rune) rune {
@@ -112,10 +112,10 @@ func gcFound(v []byte, ss []int64, ls []int) {
 		varnames[vn] = n + 1
 	}
 	/* Print go code for variable */
-	fmt.Printf("/* %q */\n", v)
-	fmt.Printf("var %v = \"\"", vn)
+	fmt.Fprintf(o, "/* %q */\n", v)
+	fmt.Fprintf(o, "var %v = \"\"", vn)
 	for i, s := range ss {
-		fmt.Printf(" + seedToString(%v, %v)", s, ls[i])
+		fmt.Fprintf(o, " + seedToString(%v, %v)", s, ls[i])
 	}
-	fmt.Printf("\n")
+	fmt.Fprintf(o, "\n")
 }
