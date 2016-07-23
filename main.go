@@ -13,6 +13,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"runtime"
 
@@ -63,6 +64,17 @@ func main() {
 			"main",
 			"Package name to use when outputting Go source",
 		)
+		buildDB = flag.Bool(
+			"b",
+			false,
+			"Build a database with ascii strings of the length "+
+				"given by -golen",
+		)
+		buildStart = flag.Int64(
+			"bstart",
+			math.MinInt64,
+			"Starting seed if -b is given",
+		)
 	)
 	flag.Usage = func() {
 		fmt.Fprintf(
@@ -86,6 +98,22 @@ Options:
 	}
 	flag.Parse()
 
+	/* Open the database */
+	db, err := dbOpen(*dbFile)
+	if nil != err {
+		log.Fatalf("Database error with %v: %v", *dbFile, err)
+	}
+	if nil != db {
+		log.Printf("Opened database %v", *dbFile)
+		defer db.Close()
+	}
+
+	/* If we're just to build a database, do that */
+	if *buildDB {
+		buildDatabase(*goLen, *buildStart)
+		return
+	}
+
 	/* Get the strings or chunks for which to find seeds */
 	ins, err := getInput(flag.Args(), *wordFile, *zero)
 	if nil != err {
@@ -95,16 +123,6 @@ Options:
 		fmt.Fprintf(os.Stderr, "No strings to convert.\n\n")
 		flag.Usage()
 		os.Exit(1)
-	}
-
-	/* Open the database */
-	db, err := dbOpen(*dbFile)
-	if nil != err {
-		log.Fatalf("Database error with %v: %v", *dbFile, err)
-	}
-	if nil != db {
-		log.Printf("Opened database %v", *dbFile)
-		defer db.Close()
 	}
 
 	/* Open the output file */
