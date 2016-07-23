@@ -73,7 +73,12 @@ func main() {
 		buildStart = flag.Int64(
 			"bstart",
 			math.MinInt64,
-			"Starting seed if -b is given",
+			"Starting `seed` if -b is given",
+		)
+		buildTarget = flag.String(
+			"btgt",
+			"",
+			"Stop database building when `target` is found",
 		)
 	)
 	flag.Usage = func() {
@@ -110,7 +115,7 @@ Options:
 
 	/* If we're just to build a database, do that */
 	if *buildDB {
-		buildDatabase(*goLen, *buildStart)
+		buildDatabase(*goLen, *buildStart, *buildTarget)
 		return
 	}
 

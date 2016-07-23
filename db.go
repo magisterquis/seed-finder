@@ -121,3 +121,16 @@ func hashBuf(b []byte) []byte {
 	}
 	return append([]byte("seed-finder-key-"), b...)
 }
+
+/* nSeedStrings returns the number of strings in the database */
+func nSeedStrings() int {
+	if nil == DB {
+		panic("Nil database")
+	}
+	var n int /* Number of key value pairs */
+	DB.View(func(tx *bolt.Tx) error {
+		n = tx.Bucket([]byte(BUCKETNAME)).Stats().KeyN
+		return nil
+	})
+	return n
+}
