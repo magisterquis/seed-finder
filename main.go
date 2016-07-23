@@ -130,7 +130,7 @@ Options:
 	if "" != *oFileName {
 		ofile, err = os.OpenFile(
 			*oFileName,
-			os.O_CREATE|os.O_APPEND|os.O_WRONLY,
+			os.O_TRUNC|os.O_CREATE|os.O_APPEND|os.O_WRONLY,
 			0644,
 		)
 		if nil != err {
