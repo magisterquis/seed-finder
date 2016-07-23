@@ -26,34 +26,35 @@ func getInput(args []string, fn string, nt bool) (<-chan []byte, error) {
 	for _, v := range args {
 		o = append(o, []byte(v))
 	}
-	/* If we have no file, we're done */
-	if "" == fn {
-		return nil, nil
-	}
-	/* File to read from */
 	var r *os.File
-	var err error
-	if "-" == fn {
-		r = os.Stdin
-	} else {
-		/* Try to open the file */
-		r, err = os.Open(fn)
-		if nil != err {
-			return nil, err
+	/* Open the file if we have one */
+	if "" != fn {
+		/* File to read from */
+		if "-" == fn {
+			r = os.Stdin
+		} else {
+			/* Try to open the file */
+			var err error
+			r, err = os.Open(fn)
+			if nil != err {
+				return nil, err
+			}
 		}
 	}
 	/* Channel to send strings on */
 	ch := make(chan []byte)
 	/* Read into the channel */
 	go inputToChannel(o, r, nt, ch)
-	return ch, err
+	return ch, nil
 
 }
 
 /* inputToChannel puts the slices from args on a channel, as well as the
 lines or chunks from r */
 func inputToChannel(args [][]byte, r *os.File, nt bool, ch chan<- []byte) {
-	defer r.Close()
+	if nil != r {
+		defer r.Close()
+	}
 	defer close(ch)
 
 	/* Send args on the channel */
@@ -61,6 +62,10 @@ func inputToChannel(args [][]byte, r *os.File, nt bool, ch chan<- []byte) {
 		ch <- a
 	}
 
+	/* Don't bother if we didn't have a file */
+	if nil == r {
+		return
+	}
 	/* Read lines or chunks from the file */
 	sf := bufio.ScanLines
 	if nt {
