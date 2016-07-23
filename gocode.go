@@ -33,9 +33,9 @@ func init() {
 code output.  p gives the package name to use. */
 func gcBoilerplate(o *os.File, p string) {
 	fmt.Fprintf(o, "package %v\n%v\n", p, `import "math/rand"
-func seedToString(seed int64, len int) string {
+func seedToString(seed int64, l int) string {
 	r := rand.New(rand.NewSource(seed))
-	b := make([]byte, len)
+	b := make([]byte, l)
 	for i := range b {
 		b[i] = byte(r.Intn(256))
 	}
@@ -112,7 +112,7 @@ func gcFound(v []byte, ss []int64, ls []int, o *os.File) {
 		varnames[vn] = n + 1
 	}
 	/* Append a _randstr to note it's one of these */
-	vn += "_randstr"
+	vn += "_rs"
 	/* Print go code for variable */
 	fmt.Fprintf(o, "/* %q */\n", v)
 	fmt.Fprintf(o, "var %v = \"\"", vn)
