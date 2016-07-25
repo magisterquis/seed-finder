@@ -5,7 +5,7 @@ package main
  * Handle the database
  * By J. Stuart McMurray
  * Created 20170712
- * Last Modified 20170723
+ * Last Modified 20170712
  */
 
 import (
@@ -43,34 +43,12 @@ func dbOpen(fn string) (*bolt.DB, error) {
 	return db, nil
 }
 
-/* DBHas checks if the given string is in the database */
-func dbHas(b []byte) bool {
-	/* Don't bother if we haven't a database */
-	if nil == DB {
-		panic("No database")
-	}
-
-	/* Get the seed, if there is one */
-	var has bool
-	DB.View(func(tx *bolt.Tx) error {
-		/* Get the bucket */
-		bucket := tx.Bucket([]byte(BUCKETNAME))
-		if nil == bucket {
-			panic("No bucket")
-		}
-		/* Try to get the value stored for the key */
-		has = nil != bucket.Get(hashBuf(b))
-		return nil
-	})
-	return has
-}
-
 /* checkDB returns the seed for b, whether it's known to be unfindable, and
 whether it was in the database */
-func checkDB(b []byte) (seed int64, unfindable, found bool) {
+func checkDB(b []byte) (seed int64, unfindable, found bool, err error) {
 	/* Don't bother if we haven't a database */
 	if nil == DB {
-		panic("No database")
+		return 0, false, false, nil
 	}
 
 	/* Get the seed, if there is one */
@@ -87,17 +65,17 @@ func checkDB(b []byte) (seed int64, unfindable, found bool) {
 	})
 
 	if nil == v {
-		return 0, false, false
+		return 0, false, false, nil
 	}
 	if 0 == len(v) {
-		return 0, true, true
+		return 0, true, true, nil
 	}
 	/* Convert to an int64 */
 	seed, n := binary.Varint(v)
 	if 0 >= n {
-		return 0, false, false
+		return 0, false, false, nil
 	}
-	return seed, false, true
+	return seed, false, true, nil
 }
 
 /* storeSeed puts the seed for b in the database */
@@ -145,7 +123,7 @@ func hashBuf(b []byte) []byte {
 }
 
 /* nSeedStrings returns the number of strings in the database */
-func UNUSEDnSeedStrings() int {
+func nSeedStrings() int {
 	if nil == DB {
 		panic("Nil database")
 	}

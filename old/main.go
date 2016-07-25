@@ -6,7 +6,7 @@ package main
  * By Henri Koski, github.com/heppu/seed-finder
  * Modified by J. Stuart McMurray
  * Created 20160712
- * Last Modified 20160723
+ * Last Modified 20160712
  */
 
 import (
@@ -15,6 +15,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"runtime"
 
 	"github.com/boltdb/bolt"
 )
@@ -26,7 +27,6 @@ func main() {
 			"/var/db/seed-finder.db",
 			"Database `file`",
 		)
-		/* Input control */
 		wordFile = flag.String(
 			"f",
 			"",
@@ -38,13 +38,6 @@ func main() {
 			false,
 			"Split on null bytes (\\0), not newlines with -f",
 		)
-		/* Output control */
-		oFileName = flag.String(
-			"o",
-			"",
-			"Write output to this file instead of stdout",
-		)
-		/* Code-generation control */
 		goCode = flag.Bool(
 			"go",
 			false,
@@ -56,29 +49,36 @@ func main() {
 			"Split strings into chunks of this `length` if Go "+
 				"source code is to be output",
 		)
+		nParallel = flag.Uint(
+			"n",
+			uint(runtime.NumCPU()),
+			"Split seed-finding into `count` parallel attempts",
+		)
+		oFileName = flag.String(
+			"o",
+			"",
+			"Write output to this file instead of stdout",
+		)
 		pkgName = flag.String(
-			"gopkg",
+			"p",
 			"main",
 			"Package name to use when outputting Go source",
 		)
-		/* Database building */
-		buildDB = flag.Uint(
+		buildDB = flag.Bool(
 			"b",
-			0,
-			"Pre-build a database with ascii strings of this "+
-				"`length`",
+			false,
+			"Build a database with ascii strings of the length "+
+				"given by -golen",
 		)
 		buildStart = flag.Int64(
 			"bstart",
 			math.MinInt64,
-			"Starting `seed` for -b",
+			"Starting `seed` if -b is given",
 		)
-		buildNonPrint = flag.Bool(
-			"bnonprint",
-			false,
-			"Include ASCII characters outside the range "+
-				"0x20-0x7E (space - tilde) when building the "+
-				"database",
+		buildTarget = flag.String(
+			"btgt",
+			"",
+			"Stop database building when `target` is found",
 		)
 	)
 	flag.Usage = func() {
@@ -86,9 +86,11 @@ func main() {
 			os.Stderr,
 			`Usage: %v [options] [string [string...]]
 
-Finds the random seed needed to generate the given string(s), mainly for use
-in removing readable strings from Go binaries.  A database is used to speed
-up lookups.  To further decrease runtime, the database can be pre-populated.
+Finds a random number seed which can be used to recrate the original string,
+optionally first checking a database (which will be updated with found seeds).
+
+If Go source is to be output, strings will be split into smaller chunks, to
+considerably speed up searching.
 
 Strings must not be longer than %v bytes.
 
@@ -112,8 +114,8 @@ Options:
 	}
 
 	/* If we're just to build a database, do that */
-	if 0 != *buildDB {
-		buildDatabase(*buildStart, *buildDB, *buildNonPrint)
+	if *buildDB {
+		buildDatabase(*goLen, *buildStart, *buildTarget)
 		return
 	}
 
@@ -143,40 +145,24 @@ Options:
 				err,
 			)
 		}
-		defer ofile.Close()
 	}
 
 	/* If we're printing out Go code, print the boilerplate */
 	if *goCode {
 		gcBoilerplate(ofile, *pkgName)
+		for in := range ins {
+			gcVar(in, *goLen, *nParallel, ofile)
+		}
+		return
 	}
 
-	/* Process the words to stringify */
+	/* Find each seed */
 	for in := range ins {
-		/* Go's got it's own functions.  Fancy. */
-		if *goCode {
-			gcVar(in, *goLen, ofile)
+		seed, err := findSeed(in, *nParallel)
+		if nil != err {
+			log.Printf("Unable to find seed for %v: %v", in, err)
 			continue
 		}
-		/* Find the seeds for the strings if we're not making Go. */
-		seed, err := findSeed(in, math.MinInt64, 0, 0xFF)
-		if nil != err {
-			log.Printf("%q ERROR: %v", in, err)
-		} else {
-			fmt.Fprintf(ofile, "%s -> %v\n", in, seed)
-		}
-		continue
+		fmt.Fprintf(ofile, "%q %v", in, seed)
 	}
-	/* TODO: Check from here */
-	//
-	//
-	//	/* Find each seed */
-	//	for in := range ins {
-	//		seed, err := findSeed(in, *nParallel)
-	//		if nil != err {
-	//			log.Printf("Unable to find seed for %v: %v", in, err)
-	//			continue
-	//		}
-	//		fmt.Fprintf(ofile, "%q %v", in, seed)
-	//	}
 }

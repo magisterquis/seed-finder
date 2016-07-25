@@ -5,7 +5,7 @@ package main
  * Reads intput line or chunks
  * By J. Stuart McMurray
  * Created 20170712
- * Last Modified 20170723
+ * Last Modified 20170712
  */
 
 import (
